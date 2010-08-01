@@ -67,7 +67,7 @@ class EndlessRubyLexer < RubyLexer
     @old_indent_levels.last
   end
 
-  DONT_END=/^( *)(end|when|else|elsif|rescue|ensure)(?!#{LETTER_DIGIT}|[?!])/o
+  DONT_END = /^( *)(end|when|else|elsif|rescue|ensure)(?!#{LETTER_DIGIT}|[?!])/o
 
   def start_of_line_directives
     super
@@ -80,10 +80,10 @@ class EndlessRubyLexer < RubyLexer
         @indent_level = :invalid
       end
 
-      if !(@parsestack.last.respond_to? :in_body and !@parsestack.last.in_body) and
-         (!@moretokens[-2] or NewlineToken===@moretokens[-2])
+      if !(@parsestack.last.respond_to?(:in_body) && !@parsestack.last.in_body) &&
+         (!@moretokens[-2] || NewlineToken === @moretokens[-2])
         #auto-terminate previous same or more indented want-end contexts
-        pos=input_position
+        pos = input_position
         while WantsEndContext===@parsestack.last and 
               @parsestack.last.indent_level > @indent_level
           insert_implicit_end pos
@@ -96,7 +96,7 @@ class EndlessRubyLexer < RubyLexer
     end
   end
 
-  def insert_implicit_end pos
+  def insert_implicit_end(pos)
     #emit implicit end token
     @moretokens.push WsToken.new(' ',pos), 
                      KeywordToken.new('end',pos), 
@@ -105,67 +105,60 @@ class EndlessRubyLexer < RubyLexer
   end   
 
   def indent_level
-    if Integer===@indent_level
-      @indent_level
-    else
-      raise "invalid indentation: must use only spaces" 
-    end
+    return @indent_level if @indent_level.kind_of?(Integer)
+    raise "invalid indentation: must use only spaces" 
   end
 
   def endoffile_detected(str='')
-    result=super
-    pos=input_position
-    while WantsEndContext===@parsestack.last
+    result = super
+    pos = input_position
+    while WantsEndContext === @parsestack.last
       insert_implicit_end pos
     end
     @moretokens.push result
     return @moretokens.shift
   end
 
-  def keyword_for(str,offset,result)
-    result=super
-    @parsestack[-2].indent_level=indent_level
+  def keyword_for(str, offset, result)
+    result = super
+    @parsestack[-2].indent_level = indent_level
     return result
   end
 
-  def keyword_def(str,offset,result)
+  def keyword_def(str, offset, result)
     fail unless @indent_level
     @old_indent_levels.push @indent_level
-    result=super
+    result = super
     @old_indent_levels.pop
 
     return result
   end
 
+  %w(module class begin case).each do |word|
+    define_method "keyword_#{word}" do |str, offset, result|
+      result = super
+      @parsestack.last.indent_level = indent_level
+      result
+    end
+  end
   
-  eval %w[module class begin case].map{|w| 
-    "
-     def keyword_#{w}(str,offset,result)
-       result=super
-       @parsestack.last.indent_level=indent_level
-       return result
-     end
-    "
-  }.join
-
-  eval %w[while until if unless].map{|w|
-    "
-     def keyword_#{w}(str,offset,result)
-       result=super
-       if @parsestack[-2].respond_to? :indent_level=
-         @parsestack[-2].indent_level||=indent_level 
-       end
-       return result
-     end
-    "
-  }.join
+  %w(while until if unless).each do |word|
+    define_method "keyword_#{word}" do |str, offset, result|
+      result = super
+      if @parsestack[-2].respond_to?(:indent_level=)
+        @parsestack[-2].indent_level ||= indent_level
+      end
+      result
+    end
+  end
 
   def keyword_do(str,offset,result)
-    return super if ExpectDoOrNlContext===@parsestack.last
-    result=super
-    ctx=@parsestack[-1]
-    ctx=@parsestack[-2] if BlockParamListLhsContext===ctx
-    ctx.indent_level=indent_level
+    result = super
+    return result if ExpectDoOrNlContext === @parsestack.last
+    
+    ctx = @parsestack[-1]
+    ctx = @parsestack[-2] if BlockParamListLhsContext === ctx
+    ctx.indent_level = indent_level
     return result
   end
 end
@@ -175,55 +168,49 @@ class RubyLexer::NestedContexts::WantsEndContext
 end
 
 class RubyLexer::NestedContexts::DefContext
-  alias endful_see see
+  alias_method :endful_see, :see
   def see(lxr,msg)
-    if :semi==msg
+    if :semi == msg
       fail unless lxr.parsestack.last.equal? self
-      @indent_level||=lxr.old_indent_level
+      @indent_level ||= lxr.old_indent_level
     end
     endful_see lxr, msg
   end
 end
 
 module Endless
-  VERSIOn="0.0.2"
+  VERSION = "0.1.0"
 
-  class<<self
-    def require(name)
-      raise NotImplementedError
-      huh load
-    end
-
+  class << self
     def load(filename,wrap=false)
-      [''].concat($:).each{|pre|
-        pre+="/" unless %r{(\A|/)\Z}===pre
-        if File.exist? finally=pre+filename
-          code=File.open(finally){|fd| fd.read }
-          f=Tempfile.new filename 
-          begin
-            preprocess code,filename,f
+      [''].concat($:).each do |pre|
+        pre += "/" unless pre.empty? || pre[-2,1] == '/'
+        path = pre + filename
+        if File.exist? path
+          code = File.read(path)
+          Tempfile.open(filename) do |f|
+            preprocess code, filename, f
             f.rewind
             return ::Kernel::load(f.path, wrap)
-          ensure f.close
           end
         end
-      }
-      raise LoadError, "no such file to load -- "+filename
+      end
+      raise LoadError, "no such file to load -- #{filename}"
     end
 
-    def eval(code,file="(eval)",line=1,binding=nil)
+    def eval(code, file="(eval)", line=1, binding=nil)
       #binding should default to Binding.of_caller, not nil......
-      eval(preprocess(code,file),file,line,binding)
+      eval(preprocess(code, file), file, line, binding)
     end
 
-    def preprocess(code,filename,output='')
-      lexer=EndlessRubyLexer.new(filename,code)
-      printer=RubyLexer::KeepWsTokenPrinter.new
+    def preprocess(code, filename, output='')
+      lexer = EndlessRubyLexer.new(filename, code)
+      printer = RubyLexer::KeepWsTokenPrinter.new
 
       begin
-        tok=lexer.get1token
+        tok = lexer.get1token
         output << printer.aprint(tok)
-      end until RubyLexer::EoiToken===tok
+      end until RubyLexer::EoiToken === tok
 
       return output
     end
