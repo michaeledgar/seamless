@@ -1,0 +1,8 @@
+module Rescueable
+  class Rescued
+    class << self
+      def a_method
+        begin
+          raise "hai"
+        rescue
+          return 5

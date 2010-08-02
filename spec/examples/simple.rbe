@@ -1,0 +1,2 @@
+def testing_method(arg)
+  arg.to_s + ", " + arg.to_s

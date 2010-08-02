@@ -1,0 +1,3 @@
+class HelloWorlder
+  def times_two
+    return "Hello, world! Hello, world!"

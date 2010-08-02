@@ -1,0 +1,11 @@
+class HelloThing
+  def initialize(name)
+    @name = name
+    
+  def run_ten_times()
+    x = 0
+    result = []
+    while x < 10
+      x += 1
+      result << "Hello, #{@name}"
+    result

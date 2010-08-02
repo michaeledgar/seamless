@@ -187,8 +187,8 @@ module Endless
         pre += "/" unless pre.empty? || pre[-2,1] == '/'
         path = pre + filename
         if File.exist? path
-          code = File.read(path)
-          Tempfile.open(filename) do |f|
+          code = File.read(path) + "\n" # force newline at end of file
+          Tempfile.open(File.basename(filename)) do |f|
             preprocess code, filename, f
             f.rewind
             return ::Kernel::load(f.path, wrap)
