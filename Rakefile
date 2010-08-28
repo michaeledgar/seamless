@@ -19,6 +19,7 @@ Python. Then just call it 'your_file.rbe', require 'seamless', and require
     gem.homepage = "http://github.com/michaeledgar/seamless"
     gem.authors = ["Michael Edgar"]
     gem.add_dependency "polyglot", ">= 0.3.1"
+    gem.add_dependency "rubylexer", ">= 0.7.7"
     gem.add_development_dependency "rspec", ">= 1.2.9"
     gem.add_development_dependency "yard", ">= 0"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
