@@ -1,5 +1,5 @@
 require 'polyglot'
-require 'seamless/endless'
+require File.expand_path(File.join(File.dirname(__FILE__), 'seamless', 'endless'))
 
 class EndlessRubyPolyglotLoader
   def self.load(filename, options = nil, &block)
